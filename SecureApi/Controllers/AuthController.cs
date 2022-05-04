@@ -25,19 +25,19 @@ namespace SecureApi.Controllers
         }
 
 
-        [HttpPost("createrole")]
-        public async Task<IActionResult> CreateRole([FromQuery] string roleName)
+        [HttpGet("SeedRoles")]
+        public async Task<IActionResult> SeedRoles()
         {
-            if (!await _rolemanager.RoleExistsAsync(roleName))
+            if (!await _rolemanager.RoleExistsAsync("Pleb"))
             {
-                var result = await _rolemanager.CreateAsync(new IdentityRole(roleName)); // Skapa ny roll.
-                if (!result.Succeeded)
-                    return BadRequest(result.Errors);
-                
-                return StatusCode(201); // Created
+                await _rolemanager.CreateAsync(new IdentityRole("Pleb"));
             }
-
-            return BadRequest("Rollen finns redan");
+            if (!await _rolemanager.RoleExistsAsync("Admin"))
+            {
+                await _rolemanager.CreateAsync(new IdentityRole("Admin"));
+            }
+            
+            return Ok();
         }
 
 
