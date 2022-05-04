@@ -52,7 +52,8 @@ builder.Services
 
 // Konfigurera och skapa policys:
 builder.Services.AddAuthorization(options => {
-    options.AddPolicy("Admins", policy => policy.RequireClaim("Admin")); // Skapar en policy som motvarar en roll.
+    options.AddPolicy("Plebs", policy => policy.RequireClaim("Pleb")); // Skapar en policy som motvarar en roll.
+    options.AddPolicy("Admins", policy => policy.RequireClaim("Admin"));
 });
 
 builder.Services.AddControllers();
