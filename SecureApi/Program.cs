@@ -11,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-// Konfigurera context till att använda sqlite:
+// Lägg till context till DI och konfigurera den till att använda sqlite.
 builder.Services.AddDbContext<ApplicationContext>(options => {
     options.UseSqlite(builder.Configuration.GetConnectionString("sqlite"));
 });
@@ -28,12 +28,11 @@ builder.Services
         options.Lockout.MaxFailedAccessAttempts = 5; // Om man misslyckas med att logga in så här många gånger...
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(20); // ...måste man vänta så här länge innan man får försöka igen.
     })
-    .AddEntityFrameworkStores<ApplicationContext>(); // Tala om för Enity Framework och Identity-systemet var vi vill spara användare och roller.
+    .AddEntityFrameworkStores<ApplicationContext>(); // Boiler plate. Tala om för EF och Identity-systemet vilken context som ska spara användare och roller.
 
-// Konfigurera authentication:
+// Lägg till authentication till DI och konfigurera.
 builder.Services
     .AddAuthentication(options => {
-        // DefaultAuthenticationScheme och DefaultChallengeScheme
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     })
@@ -50,9 +49,9 @@ builder.Services
         };
     });
 
-// Konfigurera och skapa policys:
+// Lägg till authorization till DI och sätt upp policies.
 builder.Services.AddAuthorization(options => {
-    options.AddPolicy("Plebs", policy => policy.RequireClaim("Pleb")); // Skapar en policy som motvarar en roll.
+    options.AddPolicy("Plebs", policy => policy.RequireClaim("Pleb")); // Skapar en policy som motvarar en roll. Kan sedan kontrolleras med [Authorize(policy: "Plebs")] i controllern.
     options.AddPolicy("Admins", policy => policy.RequireClaim("Admin"));
 });
 
@@ -63,20 +62,20 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+
+
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+
+// Pipeline med middleware nedan.
+// Pipeline definierar ordningen och vilka middleware som körs på alla requests och responses.
+if (app.Environment.IsDevelopment()) // Standard.
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-
-
-// Pipeline med middleware nedan.
-// Pipeline definierar ordningen och vilka middleware som körs på alla requests och responses.
-
 app.UseHttpsRedirection(); // Standard.
-app.UseAuthentication(); // Måste ligga efter UseHttpsRedirection och före UseAuthorization
+app.UseAuthentication(); // Tillagd för att akrivera autentisering. Måste ligga efter UseHttpsRedirection och före UseAuthorization
 app.UseAuthorization(); // Standard.
 
 app.MapControllers(); // Standard. Skapar endpoints baserat på [Route("path1")], [HttpGet("path2")], etc.

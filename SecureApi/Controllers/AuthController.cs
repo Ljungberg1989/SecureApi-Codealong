@@ -23,24 +23,26 @@ namespace SecureApi.Controllers
             _signInManager = signInManager;
             _rolemanager = rolemanager;
         }
+        
 
-
+        
+        // GET: api/auth/seedroles
         [HttpGet("SeedRoles")]
         public async Task<IActionResult> SeedRoles()
         {
-            if (!await _rolemanager.RoleExistsAsync("Pleb"))
+            var roles = new List<string>() {"Pleb", "Admin"};
+            foreach (var role in roles)
             {
-                await _rolemanager.CreateAsync(new IdentityRole("Pleb"));
-            }
-            if (!await _rolemanager.RoleExistsAsync("Admin"))
-            {
-                await _rolemanager.CreateAsync(new IdentityRole("Admin"));
+                if (!await _rolemanager.RoleExistsAsync(role))
+                    await _rolemanager.CreateAsync(new IdentityRole(role));
             }
             
             return Ok();
         }
-
-
+        
+        
+        
+        // POST: api/auth/register
         [HttpPost("register")]
         public async Task<ActionResult<UserViewModel>> RegisterUser(RegisterViewModel model)
         {
@@ -90,6 +92,9 @@ namespace SecureApi.Controllers
             }
         }
 
+
+        
+        // POST: api/auth/login
         [HttpPost("login")]
         public async Task<ActionResult<UserViewModel>> Login(LoginViewModel model)
         {
@@ -114,32 +119,18 @@ namespace SecureApi.Controllers
 
         private async Task<string> CreateJwtTokenAsync(IdentityUser user)
         {
-            // Kommer att hämtas ifrån AppSettings...
-            var key = Encoding.ASCII.GetBytes(_config.GetValue<string>("apikey")); // Hämta från appsettings.development.json
+            var key = Encoding.ASCII.GetBytes(_config.GetValue<string>("apikey")); // Hämta nyckeln från appsettings.development.json och gör den till en byte-array.
 
-            // Skapa en lista av Claims som kommer innehålla
-            // information som är av värde för behörighetskontroll...
-            // var claims = new List<Claim> // Denna lista används inte längre, men är ett bra exempel. userClaims används istället.
-            // {
-            //     new Claim(ClaimTypes.Name, user.UserName),
-            //     new Claim(ClaimTypes.Email, user.Email),
-            //     new Claim("MyCustomClaimKey", "MyCustomClaimValue"), // Hur man gör en egen claim.
-            //     new Claim("Admin", "") // Policy kollar efter clam med namnet, men struntar i värdet.
-            // };
-
-            var userClaims = (await _userManager.GetClaimsAsync(user)).ToList();
-            var roles = (await _userManager.GetRolesAsync(user));
-            userClaims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role))); // Lägg in rollerna som claims.
-
-            // Skapa ett nytt token...
-            var jwt = new JwtSecurityToken(
-                claims: userClaims,
-                // notBefore: Från när skall biljetten/token vara giltig.
-                // Vi kan sätta detta till en datum i framtiden om biljetten/token
-                // skall skapas men inte vara giltig på en gång...
-                notBefore: DateTime.Now,
-                // Sätt giltighetstiden på biljetten i detta fallet en vecka.
-                expires: DateTime.Now.AddDays(7), // Tiden för giltigheten bör läggas någon annanstans, inte hårdkodas.
+            var userClaims = (await _userManager.GetClaimsAsync(user)).ToList(); // Hämta denna användares claims ur databasen. ToList för att kunna göra AddRange senare.
+            var roles = (await _userManager.GetRolesAsync(user)); // Hämta denna användares roller ur databasen. (Strängar.)
+            var claimsToAdd = roles.Select(role => new Claim(ClaimTypes.Role, role)); // Projicera rollerna som claims. (Gör en lista med claims baserat på listan med roller.)
+            userClaims.AddRange(claimsToAdd); // Lägg till claims som representerar roller.
+            
+            // TODO: Lite kommentarer kvar.
+            var token = new JwtSecurityToken( // Skapa en ny token (biljett).
+                claims: userClaims, // Ange de claims som skapades ovan.
+                notBefore: DateTime.Now, // Starttid som biljetten är giltig. Vanligtvis direkt, men man kan sätta en tid i framtiden vid behov.
+                expires: DateTime.Now.AddDays(7), // Sluttid då biljetten slutar gälla. Värdet bör inte hårdkodas, utan hämtas från någon annan stans.
                 // Skapa en instans av SigningCredential klassen
                 // som används för att skapa en hash och signering av biljetten.
                 signingCredentials: new SigningCredentials(
@@ -151,9 +142,8 @@ namespace SecureApi.Controllers
                 )
             );
 
-        // Vi använder klassen JwtSecurityTokenHandler och dess metod WriteToken för att
-        // skapa en sträng av vårt token...
-        return new JwtSecurityTokenHandler().WriteToken(jwt);
+        string tokenString = new JwtSecurityTokenHandler().WriteToken(token); // Skapa strängen som representerar vårt jwt-token. Denna sträng skickas sedan med i alla anrop.
+        return tokenString;
         }
     }
 }
