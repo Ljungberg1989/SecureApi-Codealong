@@ -23,31 +23,32 @@ namespace SecureApi.Controllers
             _signInManager = signInManager;
             _rolemanager = rolemanager;
         }
-        
 
-        
+
+
         // GET: api/auth/seedroles
         [HttpGet("SeedRoles")]
         public async Task<IActionResult> SeedRoles()
         {
-            var roles = new List<string>() {"Pleb", "Admin"};
+            var roles = new List<string>() { "Pleb", "Admin" };
             foreach (var role in roles)
             {
                 if (!await _rolemanager.RoleExistsAsync(role))
                     await _rolemanager.CreateAsync(new IdentityRole(role));
             }
-            
+
             return Ok();
         }
-        
-        
-        
+
+
+
         // POST: api/auth/register
         [HttpPost("register")]
         public async Task<ActionResult<UserViewModel>> RegisterUser(RegisterViewModel model)
         {
             // Skapa ny IdentityUser och fyll på med data från modellen.
-            var user = new IdentityUser() {
+            var user = new IdentityUser()
+            {
                 Email = model.Email!.ToLower(),
                 UserName = model.Email!.ToLower()
             };
@@ -75,7 +76,8 @@ namespace SecureApi.Controllers
                 }
 
                 // Skapa modell för att skicka tillbaka.
-                var userModel = new UserViewModel() {
+                var userModel = new UserViewModel()
+                {
                     UserName = user.UserName,
                     Token = await CreateJwtTokenAsync(user)
                 };
@@ -93,7 +95,7 @@ namespace SecureApi.Controllers
         }
 
 
-        
+
         // POST: api/auth/login
         [HttpPost("login")]
         public async Task<ActionResult<UserViewModel>> Login(LoginViewModel model)
@@ -101,13 +103,14 @@ namespace SecureApi.Controllers
             var user = await _userManager.FindByNameAsync(model.UserName); // Hämta användare ur databasen.
             if (user == null)
                 return Unauthorized("Felaktigt användarnamn"); // 401
-            
+
             var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false); // Försök logga in. Hur det gick sparas i variabeln.
 
             if (!result.Succeeded)
                 return Unauthorized("Du är för dålig för att logga in."); // 401
-            
-            var userModel = new UserViewModel() { // Skapa modell för att skicka tillbaka.
+
+            var userModel = new UserViewModel()
+            { // Skapa modell för att skicka tillbaka.
                 UserName = model.UserName,
                 Token = await CreateJwtTokenAsync(user)
             };
@@ -125,14 +128,14 @@ namespace SecureApi.Controllers
             var roles = (await _userManager.GetRolesAsync(user)); // Hämta denna användares roller ur databasen. (Strängar.)
             var claimsToAdd = roles.Select(role => new Claim(ClaimTypes.Role, role)); // Projicera rollerna som claims. (Gör en lista med claims baserat på listan med roller.)
             userClaims.AddRange(claimsToAdd); // Lägg till claims som representerar roller.
-            
+
             // TODO: Lite kommentarer kvar.
             var token = new JwtSecurityToken( // Skapa en ny token (biljett).
                 claims: userClaims, // Ange de claims som skapades ovan.
                 notBefore: DateTime.Now, // Starttid som biljetten är giltig. Vanligtvis direkt, men man kan sätta en tid i framtiden vid behov.
                 expires: DateTime.Now.AddDays(7), // Sluttid då biljetten slutar gälla. Värdet bör inte hårdkodas, utan hämtas från någon annan stans.
-                // Skapa en instans av SigningCredential klassen
-                // som används för att skapa en hash och signering av biljetten.
+                                                  // Skapa en instans av SigningCredential klassen
+                                                  // som används för att skapa en hash och signering av biljetten.
                 signingCredentials: new SigningCredentials(
                 // Vi använder en SymmetricSecurityKey som tar vår hemlighet
                 // som argument och sedan talar vi om vilken algoritm som skall
@@ -142,8 +145,8 @@ namespace SecureApi.Controllers
                 )
             );
 
-        string tokenString = new JwtSecurityTokenHandler().WriteToken(token); // Skapa strängen som representerar vårt jwt-token. Denna sträng skickas sedan med i alla anrop.
-        return tokenString;
+            string tokenString = new JwtSecurityTokenHandler().WriteToken(token); // Skapa strängen som representerar vårt jwt-token. Denna sträng skickas sedan med i alla anrop.
+            return tokenString;
         }
     }
 }
